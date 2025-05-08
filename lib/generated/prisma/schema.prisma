@@ -1,0 +1,44 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UploadedFile {
+  id               String   @id @default(uuid())
+  fileName         String
+  fileSlug         String   @unique
+  filePath         String
+  subject          String
+  grade            String
+  pdfType          String
+  status           String   @default("uploading") // Values: uploading, uploaded, processing, processed
+  pageCount        Int?
+  extractedContent Boolean? @default(false)
+  processingTime   Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  units            Unit[] // Relation to Unit model
+}
+
+model Unit {
+  id         String       @id @default(uuid())
+  title      String
+  pageRange  String
+  wordCount  Int
+  keyTopics  String[] // Array of strings for key topics
+  document   UploadedFile @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId String
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
