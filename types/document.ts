@@ -20,4 +20,11 @@ export interface Document {
     processingTime?: number
   }
   units?: Unit[]
+  quizzes?: Quiz[]
+}
+
+export interface Quiz {
+  id: string
+  title: string
+  difficulty: string
 } 

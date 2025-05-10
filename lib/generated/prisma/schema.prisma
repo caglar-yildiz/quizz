@@ -15,20 +15,22 @@ datasource db {
 }
 
 model UploadedFile {
-  id               String   @id @default(uuid())
+  id               String     @id @default(uuid())
   fileName         String
-  fileSlug         String   @unique
+  fileSlug         String     @unique
   filePath         String
   subject          String
   grade            String
   pdfType          String
-  status           String   @default("uploading") // Values: uploading, uploaded, processing, processed
+  status           String     @default("uploading") // Values: uploading, uploaded, processing, processed
   pageCount        Int?
-  extractedContent Boolean? @default(false)
+  extractedContent Boolean?   @default(false)
   processingTime   Int?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
   units            Unit[] // Relation to Unit model
+  questions        Question[] // Relation to Question model
+  quizzes          Quiz[] // Relation to Quiz model
 }
 
 model Unit {
@@ -41,4 +43,37 @@ model Unit {
   documentId String
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+  questions  Question[] // Relation to Question model
+  quizzes    Quiz[] // Relation to Quiz model
+}
+
+model Quiz {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  difficulty  String // easy, medium, hard
+  document    UploadedFile @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId  String
+  unit        Unit?        @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  unitId      String?
+  questions   Question[] // Relation to Question model
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Question {
+  id            String       @id @default(uuid())
+  type          String // multiple_choice, true_false
+  question      String
+  options       String[] // For multiple choice questions
+  correctAnswer Int // Index of correct answer in options array for multiple choice, 0 for false, 1 for true in true/false
+  reasoning     String // Explanation of why this is the correct answer
+  document      UploadedFile @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId    String
+  unit          Unit?        @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  unitId        String?
+  quiz          Quiz?        @relation(fields: [quizId], references: [id], onDelete: SetNull)
+  quizId        String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }

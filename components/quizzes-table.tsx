@@ -37,12 +37,15 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 type QuizQuestion = {
   id: string
   question: string
   options: string[]
   correctAnswer: number
+  type: string
+  reasoning: string
 }
 
 type Quiz = {
@@ -69,156 +72,23 @@ export default function QuizzesTable() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedQuiz, setSelectedQuiz] = useState<Quiz | null>(null)
+  const [filters, setFilters] = useState({
+    subject: "all",
+    grade: "all",
+    difficulty: "all",
+    unit: "all",
+  })
 
   useEffect(() => {
     async function fetchQuizzes() {
       try {
         setLoading(true)
-        // In a real application, this would be an API call
-        // const response = await fetch("/api/quizzes")
-        // const data = await response.json()
-
-        // For demonstration, we'll use mock data
-        const mockData: Quiz[] = [
-          {
-            id: "quiz1",
-            title: "Ancient Civilizations Quiz",
-            documentId: "1",
-            documentTitle: "History 9th Grade",
-            subject: "History",
-            grade: "9",
-            unitId: "unit1",
-            unitTitle: "Ancient Civilizations",
-            createdAt: "2023-05-16T14:30:00Z",
-            questionCount: 10,
-            difficulty: "medium",
-            questions: [
-              {
-                id: "q1",
-                question: "Which civilization developed the first known writing system called cuneiform?",
-                options: ["Egyptian", "Sumerian", "Indus Valley", "Chinese"],
-                correctAnswer: 1,
-              },
-              {
-                id: "q2",
-                question: "Which river valley is known as the 'Gift of the Nile'?",
-                options: ["Mesopotamia", "Indus Valley", "Egypt", "Yellow River Valley"],
-                correctAnswer: 2,
-              },
-              {
-                id: "q3",
-                question: "What was the main purpose of the ziggurats in Mesopotamia?",
-                options: ["Astronomical observations", "Religious temples", "Royal tombs", "Government buildings"],
-                correctAnswer: 1,
-              },
-            ],
-          },
-          {
-            id: "quiz2",
-            title: "Mathematics Full Book Quiz",
-            documentId: "3",
-            documentTitle: "Mathematics 10th Grade",
-            subject: "Mathematics",
-            grade: "10",
-            createdAt: "2023-05-15T09:45:00Z",
-            questionCount: 25,
-            difficulty: "hard",
-            questions: [
-              {
-                id: "q1",
-                question: "What is the solution to the equation 2x + 5 = 15?",
-                options: ["x = 5", "x = 10", "x = 7.5", "x = 5.5"],
-                correctAnswer: 0,
-              },
-              {
-                id: "q2",
-                question: "What is the area of a circle with radius 6 cm?",
-                options: ["12π cm²", "36π cm²", "6π cm²", "18π cm²"],
-                correctAnswer: 1,
-              },
-              {
-                id: "q3",
-                question: "If sin(θ) = 0.5, what is θ?",
-                options: ["30°", "45°", "60°", "90°"],
-                correctAnswer: 0,
-              },
-            ],
-          },
-          {
-            id: "quiz3",
-            title: "Cell Biology Quiz",
-            documentId: "5",
-            documentTitle: "Biology 11th Grade",
-            subject: "Biology",
-            grade: "11",
-            unitId: "unit1",
-            unitTitle: "Cell Biology",
-            createdAt: "2023-05-14T16:20:00Z",
-            questionCount: 15,
-            difficulty: "medium",
-            questions: [
-              {
-                id: "q1",
-                question: "Which organelle is responsible for protein synthesis in a cell?",
-                options: ["Mitochondria", "Ribosome", "Golgi apparatus", "Lysosome"],
-                correctAnswer: 1,
-              },
-              {
-                id: "q2",
-                question: "What is the primary function of mitochondria?",
-                options: ["Protein synthesis", "Lipid metabolism", "Energy production", "Waste removal"],
-                correctAnswer: 2,
-              },
-              {
-                id: "q3",
-                question: "Which of the following is NOT a phase of mitosis?",
-                options: ["Prophase", "Metaphase", "Interphase", "Telophase"],
-                correctAnswer: 2,
-              },
-            ],
-          },
-          {
-            id: "quiz4",
-            title: "Trigonometry Unit Quiz",
-            documentId: "3",
-            documentTitle: "Mathematics 10th Grade",
-            subject: "Mathematics",
-            grade: "10",
-            unitId: "unit3",
-            unitTitle: "Trigonometry",
-            createdAt: "2023-05-13T11:15:00Z",
-            questionCount: 12,
-            difficulty: "hard",
-            questions: [
-              {
-                id: "q1",
-                question: "What is the value of sin(90°)?",
-                options: ["0", "1", "undefined", "√2/2"],
-                correctAnswer: 1,
-              },
-              {
-                id: "q2",
-                question: "Which trigonometric identity is correct?",
-                options: [
-                  "sin²(θ) + cos²(θ) = 2",
-                  "sin²(θ) + cos²(θ) = 1",
-                  "sin²(θ) - cos²(θ) = 1",
-                  "sin(θ) + cos(θ) = 1",
-                ],
-                correctAnswer: 1,
-              },
-              {
-                id: "q3",
-                question:
-                  "In a right triangle, if one angle is 30° and the hypotenuse is 10 units, what is the length of the opposite side?",
-                options: ["5 units", "5√3 units", "10√3 units", "5√2 units"],
-                correctAnswer: 0,
-              },
-            ],
-          },
-        ]
-
-        setQuizzes(mockData)
+        const response = await fetch("/api/quizzes")
+        if (!response.ok) {
+          throw new Error("Failed to fetch quizzes")
+        }
+        const data = await response.json()
+        setQuizzes(data)
         setError(null)
       } catch (err) {
         console.error("Failed to fetch quizzes:", err)
@@ -467,37 +337,93 @@ export default function QuizzesTable() {
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
-        <Input
-          placeholder="Filter by title..."
-          value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
-          onChange={(event) => table.getColumn("title")?.setFilterValue(event.target.value)}
-          className="max-w-sm mr-4"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                )
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="space-y-4">
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex-1 min-w-[200px]">
+            <Input
+              placeholder="Filter by title..."
+              value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
+              onChange={(event) => table.getColumn("title")?.setFilterValue(event.target.value)}
+            />
+          </div>
+          <Select
+            value={filters.subject}
+            onValueChange={(value) => {
+              setFilters(prev => ({ ...prev, subject: value }))
+              table.getColumn("subject")?.setFilterValue(value === "all" ? "" : value)
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Subject" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Subjects</SelectItem>
+              <SelectItem value="Mathematics">Mathematics</SelectItem>
+              <SelectItem value="Physics">Physics</SelectItem>
+              <SelectItem value="Biology">Biology</SelectItem>
+              <SelectItem value="History">History</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.grade}
+            onValueChange={(value) => {
+              setFilters(prev => ({ ...prev, grade: value }))
+              table.getColumn("grade")?.setFilterValue(value === "all" ? "" : value)
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Grade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Grades</SelectItem>
+              <SelectItem value="9">Grade 9</SelectItem>
+              <SelectItem value="10">Grade 10</SelectItem>
+              <SelectItem value="11">Grade 11</SelectItem>
+              <SelectItem value="12">Grade 12</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.difficulty}
+            onValueChange={(value) => {
+              setFilters(prev => ({ ...prev, difficulty: value }))
+              table.getColumn("difficulty")?.setFilterValue(value === "all" ? "" : value)
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Difficulty" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Difficulties</SelectItem>
+              <SelectItem value="easy">Easy</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="hard">Hard</SelectItem>
+            </SelectContent>
+          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="ml-auto">
+                Columns <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  )
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>

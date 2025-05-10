@@ -1,4 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import prisma from "@/lib/prisma"
+import { writeFile } from "fs/promises"
+import { join } from "path"
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,24 +11,77 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Document ID is required" }, { status: 400 })
     }
 
-    // In a real implementation, you would:
-    // 1. Retrieve the document content from your database
-    // 2. If unitId is provided, filter to that specific unit
-    // 3. Use an AI service to generate quiz questions based on the content
-    // 4. Save the generated quiz to your database
-    // 5. Return the quiz ID or other metadata
+    // Get document information
+    const document = await prisma.uploadedFile.findUnique({
+      where: { id: documentId },
+      include: {
+        units: unitId ? {
+          where: { id: unitId }
+        } : undefined
+      }
+    })
 
-    // For demo purposes, we'll simulate a successful quiz generation
-    const quizId = Math.random().toString(36).substring(2, 15)
+    if (!document) {
+      return NextResponse.json({ error: "Document not found" }, { status: 404 })
+    }
 
-    // Mock response
+    // Check if document is processed
+    if (document.status !== "processed") {
+      return NextResponse.json({
+        error: "Document is not ready for quiz generation",
+        status: document.status,
+        message: document.status === "processing" 
+          ? "Document is currently being processed" 
+          : "Document needs to be processed first"
+      }, { status: 400 })
+    }
+
+    // Check if document has extracted content
+    if (!document.extractedContent) {
+      return NextResponse.json({
+        error: "Document content has not been extracted",
+        message: "Please wait for document processing to complete"
+      }, { status: 400 })
+    }
+
+    // If unitId is provided, verify it exists
+    if (unitId) {
+      const unit = document.units?.find(u => u.id === unitId)
+      if (!unit) {
+        return NextResponse.json({ error: "Specified unit not found in document" }, { status: 404 })
+      }
+    }
+
+    // Create a new quiz
+    const quiz = await prisma.quiz.create({
+      data: {
+        title: `Quiz for ${document.fileName}${unitId ? ' - Unit' : ''}`,
+        description: `Generated quiz for ${document.subject} Grade ${document.grade}`,
+        difficulty: "medium", // You might want to make this configurable
+        documentId: document.id,
+        unitId: unitId || null,
+      }
+    })
+
+    // Create quiz generation request
+    const queueDir = join(process.cwd(), "queue", "quiz_generation")
+    const requestFile = join(queueDir, `${quiz.id}.json`)
+    
+    // Ensure queue directory exists
+    await writeFile(requestFile, JSON.stringify({
+      quiz_id: quiz.id,
+      document_id: documentId,
+      unit_id: unitId || null
+    }))
+
     return NextResponse.json({
-      id: quizId,
-      message: "Quiz generated successfully",
+      id: quiz.id,
+      message: "Quiz generation initiated",
       documentId,
       unitId: unitId || null,
-      questionCount: Math.floor(Math.random() * 15) + 5,
+      status: "pending"
     })
+
   } catch (error) {
     console.error("Error generating quiz:", error)
     return NextResponse.json({ error: "Failed to generate quiz" }, { status: 500 })

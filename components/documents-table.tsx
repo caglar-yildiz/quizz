@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -27,8 +27,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
-import type { Document } from "@/types/document"
+import type { Document, Unit } from "@/types/document"
 import { DeleteDialog } from "@/components/delete-dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 
 interface DocumentsTableProps {
   documents: Document[]
@@ -48,6 +50,18 @@ export default function DocumentsTable({ documents: initialDocuments, onRefresh 
   const [refreshing, setRefreshing] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null)
+  const [unitToDelete, setUnitToDelete] = useState<{ id: string; title: string; documentId: string } | null>(null)
+  const [filters, setFilters] = useState({
+    subject: "all",
+    grade: "all",
+    status: "all",
+    type: "all",
+  })
+
+  // Add useEffect to log documentToDelete changes
+  useEffect(() => {
+    console.log('documentToDelete:', documentToDelete)
+  }, [documentToDelete])
 
   // Update documents when prop changes
   useEffect(() => {
@@ -107,10 +121,12 @@ export default function DocumentsTable({ documents: initialDocuments, onRefresh 
     }
   }
 
-  const handleDeleteUnit = async (documentId: string, unitId: string) => {
+  const handleDeleteUnit = async (options: { deleteUnits: boolean; deleteQuizzes: boolean }) => {
+    if (!unitToDelete) return
+
     try {
       const response = await fetch(
-        `/api/documents/units?id=${unitId}&documentId=${documentId}`,
+        `/api/documents/units?id=${unitToDelete.id}&documentId=${unitToDelete.documentId}`,
         { method: 'DELETE' }
       )
 
@@ -309,10 +325,11 @@ export default function DocumentsTable({ documents: initialDocuments, onRefresh 
               variant="ghost"
               size="icon"
               onClick={() => {
-                setDocumentToDelete(document)
+                setDocumentToDelete(row.original)
+                setUnitToDelete(null)
                 setDeleteDialogOpen(true)
               }}
-              className={!isProcessed ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -364,57 +381,111 @@ export default function DocumentsTable({ documents: initialDocuments, onRefresh 
   return (
     <>
       <div className="w-full">
-        <div className="flex items-center py-4">
-          <Input
-            placeholder="Filter by subject..."
-            value={(table.getColumn("class")?.getFilterValue() as string) ?? ""}
-            onChange={(event) => table.getColumn("class")?.setFilterValue(event.target.value)}
-            className="max-w-sm mr-4"
-          />
-          <div className="flex items-center gap-2 ml-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={refreshing || !onRefresh}
-              className="gap-2"
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex-1 min-w-[200px]">
+              <Input
+                placeholder="Filter by subject..."
+                value={(table.getColumn("class")?.getFilterValue() as string) ?? ""}
+                onChange={(event) => table.getColumn("class")?.setFilterValue(event.target.value)}
+              />
+            </div>
+            <Select
+              value={filters.grade}
+              onValueChange={(value) => {
+                setFilters(prev => ({ ...prev, grade: value }))
+                table.getColumn("grade")?.setFilterValue(value === "all" ? "" : value)
+              }}
             >
-              {refreshing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Refreshing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh
-                </>
-              )}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  Columns <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {table
-                  .getAllColumns()
-                  .filter((column) => column.getCanHide())
-                  .map((column) => {
-                    return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                      >
-                        {column.id}
-                      </DropdownMenuCheckboxItem>
-                    )
-                  })}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Grade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Grades</SelectItem>
+                <SelectItem value="9">Grade 9</SelectItem>
+                <SelectItem value="10">Grade 10</SelectItem>
+                <SelectItem value="11">Grade 11</SelectItem>
+                <SelectItem value="12">Grade 12</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={filters.status}
+              onValueChange={(value) => {
+                setFilters(prev => ({ ...prev, status: value }))
+                table.getColumn("status")?.setFilterValue(value === "all" ? "" : value)
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="processed">Processed</SelectItem>
+                <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={filters.type}
+              onValueChange={(value) => {
+                setFilters(prev => ({ ...prev, type: value }))
+                table.getColumn("type")?.setFilterValue(value === "all" ? "" : value)
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="PDF Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="scanned">Scanned</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2 ml-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing || !onRefresh}
+                className="gap-2"
+              >
+                {refreshing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Refreshing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </>
+                )}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    Columns <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {table
+                    .getAllColumns()
+                    .filter((column) => column.getCanHide())
+                    .map((column) => {
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={column.id}
+                          className="capitalize"
+                          checked={column.getIsVisible()}
+                          onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                        >
+                          {column.id}
+                        </DropdownMenuCheckboxItem>
+                      )
+                    })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
         <div className="rounded-md border">
@@ -435,8 +506,8 @@ export default function DocumentsTable({ documents: initialDocuments, onRefresh 
             <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <>
-                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                  <React.Fragment key={row.id}>
+                    <TableRow data-state={row.getIsSelected() && "selected"}>
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                       ))}
@@ -487,7 +558,10 @@ export default function DocumentsTable({ documents: initialDocuments, onRefresh 
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          onClick={() => handleDeleteUnit(row.original.id, unit.id)}
+                                          onClick={() => {
+                                            setUnitToDelete({ id: unit.id, title: unit.title, documentId: row.original.id })
+                                            setDeleteDialogOpen(true)
+                                          }}
                                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                         >
                                           <Trash2 className="h-4 w-4" />
@@ -502,7 +576,7 @@ export default function DocumentsTable({ documents: initialDocuments, onRefresh 
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </React.Fragment>
                 ))
               ) : (
                 <TableRow>
@@ -539,10 +613,16 @@ export default function DocumentsTable({ documents: initialDocuments, onRefresh 
         onClose={() => {
           setDeleteDialogOpen(false)
           setDocumentToDelete(null)
+          setUnitToDelete(null)
         }}
-        onConfirm={handleDelete}
-        title="Delete Document"
-        description={`Are you sure you want to delete "${documentToDelete?.filename}"? This action cannot be undone.`}
+        onConfirm={unitToDelete ? handleDeleteUnit : handleDelete}
+        title={unitToDelete ? "Delete Unit" : "Delete Document"}
+        description={unitToDelete 
+          ? `Are you sure you want to delete "${unitToDelete.title}"? This action cannot be undone.`
+          : `Are you sure you want to delete "${documentToDelete?.filename}"? This action cannot be undone.`
+        }
+        showUnitOption={documentToDelete?.status === "processed" && documentToDelete?.units && documentToDelete.units.length > 0}
+        showQuizOption={documentToDelete?.status === "processed" && documentToDelete?.quizzes && documentToDelete.quizzes.length > 0}
       />
     </>
   )
