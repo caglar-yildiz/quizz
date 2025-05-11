@@ -11,6 +11,8 @@ A web application for generating quizzes from documents using AI.
 
 ## Installation
 
+> **Note**: All commands should be run from the project root directory (`quiz_app/`)
+
 1. Clone the repository:
 ```bash
 git clone <repository-url>
@@ -22,9 +24,22 @@ cd quiz_app
 npm install
 ```
 
-3. Install Python dependencies:
+3. Set up Python virtual environment and install dependencies:
 ```bash
-pip install -r requirements.txt
+# Create virtual environment
+python3 -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Install Python dependencies
+pip install -r scripts/requirements.txt
+
+# Deactivate virtual environment when done
+deactivate
 ```
 
 4. Set up environment variables:
@@ -49,7 +64,17 @@ npm run dev
 
 2. Start the Python backend server:
 ```bash
+# Activate virtual environment first
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Start the server
 python backend/server.py
+
+# Deactivate when done
+deactivate
 ```
 
 ## Production
@@ -64,8 +89,8 @@ npm run build
 # Start Next.js server
 pm2 start npm --name "quiz-app" -- start
 
-# Start Python backend
-pm2 start backend/server.py --name "quiz-backend"
+# Start Python backend (make sure to use the virtual environment's Python)
+pm2 start venv/bin/python --name "quiz-backend" -- backend/server.py
 
 # Monitor the processes
 pm2 monit
@@ -108,6 +133,7 @@ quiz_app/
 ├── prisma/             # Database schema and migrations
 ├── public/             # Static files
 ├── backend/            # Python backend
+├── venv/               # Python virtual environment
 └── types/              # TypeScript type definitions
 ```
 
